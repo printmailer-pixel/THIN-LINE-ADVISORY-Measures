@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { AppState, MeasureData } from './types';
+
+declare global {
+  interface Window {
+    TEST?: boolean;
+  }
+}
+
 import {
   CAPE_QUESTIONS,
   PCL5_QUESTIONS,
@@ -8,7 +15,7 @@ import {
   CSSRS_QUESTIONS,
   SPRINGER_QUESTIONS
 } from './data';
-import { ChevronRight, Check } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check } from 'lucide-react';
 
 const INITIAL_STATE: AppState = {
   demographics: {
@@ -37,6 +44,27 @@ export default function App() {
   const nextStep = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setStep(s => s + 1);
+  };
+
+  const prevStep = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setStep(s => Math.max(0, s - 1));
+  };
+
+  const preloadMockData = () => {
+    setData({
+      demographics: {
+        callSign: 'TestUser123', email: 'test@example.com', age: '45', gender: 'Male', role: 'Fire service', status: 'Active',
+        years: '11–20', leadership: 'Supervisor', military: 'Veteran', combat: 'Yes', orgType: 'Municipal', setting: 'Urban'
+      },
+      springer: { '0': 4, '1': 4, '2': 4, '3': 4, '4': 4 },
+      cape: { '0': 1, '1': 0, '2': 1, '3': 0, '4': 1, '5': 0, '6': 1, '7': 0, '8': 1, '9': 0 },
+      pcl5: { '0': 2, '1': 2, '2': 2, '3': 2, '4': 2, '5': 2, '6': 2, '7': 2, '8': 2, '9': 2, '10': 2, '11': 2, '12': 2, '13': 2, '14': 2, '15': 2, '16': 2, '17': 2, '18': 2, '19': 2 },
+      gad7: { '0': 1, '1': 1, '2': 1, '3': 1, '4': 1, '5': 1, '6': 1 },
+      phq9: { '0': 1, '1': 1, '2': 1, '3': 1, '4': 1, '5': 1, '6': 1, '7': 1, '8': 1 },
+      cssrs: { '0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 }
+    });
+    setStep(1);
   };
 
   // If we are at CSSRS but PHQ9 item 9 is 0, skip to final
@@ -91,8 +119,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-slate-200">
       <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12">
-        {step === 0 && <Intro nextStep={nextStep} />}
-        {step === 1 && <Demographics data={data.demographics} updateData={(v) => updateData('demographics', v)} nextStep={nextStep} />}
+        {step === 0 && <Intro nextStep={nextStep} preloadMock={preloadMockData} />}
+        {step === 1 && <Demographics data={data.demographics} updateData={(v: any) => updateData('demographics', v)} nextStep={nextStep} prevStep={prevStep} />}
         {step === 2 && (
           <Measure
             title="The Springer Measure of Elasticity"
@@ -108,6 +136,7 @@ export default function App() {
             data={data.springer}
             updateData={(v) => updateData('springer', v)}
             nextStep={nextStep}
+            prevStep={prevStep}
           />
         )}
         {step === 3 && (
@@ -122,6 +151,7 @@ export default function App() {
             data={data.cape}
             updateData={(v) => updateData('cape', v)}
             nextStep={nextStep}
+            prevStep={prevStep}
           />
         )}
         {step === 4 && (
@@ -139,6 +169,7 @@ export default function App() {
             data={data.pcl5}
             updateData={(v) => updateData('pcl5', v)}
             nextStep={nextStep}
+            prevStep={prevStep}
           />
         )}
         {step === 5 && (
@@ -155,6 +186,7 @@ export default function App() {
             data={data.gad7}
             updateData={(v) => updateData('gad7', v)}
             nextStep={nextStep}
+            prevStep={prevStep}
           />
         )}
         {step === 6 && (
@@ -171,6 +203,7 @@ export default function App() {
             data={data.phq9}
             updateData={(v) => updateData('phq9', v)}
             nextStep={step === 6 && data.phq9['8'] && Number(data.phq9['8']) > 0 ? nextStep : handleSubmit}
+            prevStep={prevStep}
             isSubmit={!(step === 6 && data.phq9['8'] && Number(data.phq9['8']) > 0)}
           />
         )}
@@ -186,6 +219,7 @@ export default function App() {
             data={data.cssrs}
             updateData={(v) => updateData('cssrs', v)}
             nextStep={handleSubmit}
+            prevStep={prevStep}
             isSubmit={true}
           />
         )}
@@ -195,103 +229,152 @@ export default function App() {
   );
 }
 
-function Intro({ nextStep }: { nextStep: () => void }) {
+function Intro({ nextStep, preloadMock }: { nextStep: () => void, preloadMock: () => void }) {
   return (
     <div className="space-y-6 bg-white p-6 sm:p-10 rounded-2xl shadow-sm border border-slate-200">
-      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+      <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
         Assessment & Feedback
       </h1>
-      <div className="space-y-4 text-slate-600 leading-relaxed text-sm">
+      <div className="space-y-6 text-slate-700 leading-relaxed text-base sm:text-lg">
         <p>
           How many times have you been asked to fill out forms – and been given no feedback at all? 
         </p>
         <p>
-          Maybe your results were used to inform a mental health provider about your symptoms, or were captured for research, and NO ONE gave you feedback on your results and what they mean. <strong>THIS IS NOT THAT.</strong>
+          Maybe your results were used to inform a mental health provider about your symptoms, or were captured for research, and NO ONE gave you feedback on your results and what they mean. <strong className="text-slate-900">THIS IS NOT THAT.</strong>
         </p>
         <p>
           This brief assessment process is designed to be private and to provide YOU with information that may be very helpful in seeing the challenges you’re currently facing. Unless you request follow up from me on your results (and share your unique call sign with me during a conversation) your specific results will only be sent to you.
         </p>
-        <div className="bg-slate-100 p-4 rounded-xl text-sm text-slate-700">
-          <strong>Please note:</strong> Because I do not collect any information to verify individual identity (like your name, date of birth, or an official work email), I will not be able to follow up if your results indicate things like high depression, anxiety, post-traumatic stress, or thoughts of self-harm. For this reason, at the end of the forms, I provide all participants with resources that may be helpful for addressing any challenges that may be identified. I strongly encourage you to take action on any challenges you become aware of.
+        <div className="bg-slate-100 p-6 rounded-xl text-base text-slate-800 border-l-4 border-slate-900">
+          <strong className="block mb-2 text-lg">Please note:</strong> Because I do not collect any information to verify individual identity (like your name, date of birth, or an official work email), I will not be able to follow up if your results indicate things like high depression, anxiety, post-traumatic stress, or thoughts of self-harm. For this reason, at the end of the forms, I provide all participants with resources that may be helpful for addressing any challenges that may be identified. I strongly encourage you to take action on any challenges you become aware of.
         </div>
         <p>
           If you are meeting with me or a member of my team, we can talk through your results and some potential next steps (you can let us know your results, or we can look them up if you tell us what unique “call sign” you used).
         </p>
       </div>
-      <div className="pt-4">
-        <Button onClick={nextStep}>
-          Let's drop in <ChevronRight className="w-4 h-4 ml-2" />
+      <div className="pt-6 flex flex-col sm:flex-row gap-4">
+        <Button onClick={nextStep} className="text-lg py-4 px-8 w-full sm:w-auto">
+          Let's drop in <ChevronRight className="w-5 h-5 ml-2" />
         </Button>
+        {window.TEST && (
+          <button onClick={preloadMock} className="px-6 py-4 rounded-full text-base font-bold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors w-full sm:w-auto">
+            Preload Mock Data
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-function Demographics({ data, updateData, nextStep }: any) {
+function Demographics({ data, updateData, nextStep, prevStep }: any) {
   const isComplete = data.callSign && data.age && data.gender && data.role && data.status && data.years && data.leadership && data.military && data.orgType && data.setting;
+
+  const handleRadioChange = (field: string, nextId: string) => (v: string) => {
+    updateData({ [field]: v });
+    setTimeout(() => {
+      document.getElementById(nextId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+  };
 
   return (
     <div className="space-y-8 bg-white p-6 sm:p-10 rounded-2xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <h2 className="text-2xl font-light text-slate-800">Getting Started</h2>
+      <h2 className="text-3xl font-bold text-slate-800">Getting Started</h2>
       
-      <div className="space-y-8">
-        <Field label="1) PICK a MEMORABLE BUT FAKE NAME - a “CALL SIGN” that is unique to you only:" hint="(“Sarge” and “Maverick” are too common – pick something like “ScreamingEagle88” or “Squirrel66”)">
-          <input type="text" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 outline-none transition-all" value={data.callSign} onChange={e => updateData({ callSign: e.target.value })} placeholder="Enter your call sign" />
-        </Field>
+      <div className="space-y-10">
+        <div id="demo-1">
+          <Field label="1) PICK a MEMORABLE BUT FAKE NAME - a “CALL SIGN” that is unique to you only:" hint="(“Sarge” and “Maverick” are too common – pick something like “ScreamingEagle88” or “Squirrel66”)">
+            <input type="text" className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-base font-bold text-slate-900 focus:ring-4 focus:ring-slate-900/20 focus:border-slate-900 outline-none transition-all" value={data.callSign} onChange={e => updateData({ callSign: e.target.value })} placeholder="Enter your call sign" />
+          </Field>
+        </div>
 
-        <Field label="2) OPTIONAL: If you want a copy of your results, what email would you like to have these sent to?" hint="(I suggest you use a non-work email for privacy)">
-          <input type="email" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 outline-none transition-all" value={data.email} onChange={e => updateData({ email: e.target.value })} placeholder="Email address (optional)" />
-        </Field>
+        <div id="demo-2">
+          <Field label="2) OPTIONAL: If you want a copy of your results, what email would you like to have these sent to?" hint="(I suggest you use a non-work email for privacy)">
+            <input type="email" className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-base font-bold text-slate-900 focus:ring-4 focus:ring-slate-900/20 focus:border-slate-900 outline-none transition-all" value={data.email} onChange={e => updateData({ email: e.target.value })} placeholder="Email address (optional)" />
+          </Field>
+        </div>
 
-        <Field label="3) Current age:">
-          <input type="number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-slate-900 outline-none transition-all" value={data.age} onChange={e => updateData({ age: e.target.value })} placeholder="Age" />
-        </Field>
+        <div id="demo-3">
+          <Field label="3) Current age:">
+            <input type="number" className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-base font-bold text-slate-900 focus:ring-4 focus:ring-slate-900/20 focus:border-slate-900 outline-none transition-all" value={data.age} onChange={e => updateData({ age: e.target.value })} placeholder="Age" />
+          </Field>
+        </div>
 
-        <RadioGroup label="4) Gender identity (Optional)" options={['Male', 'Female', 'Other designation', 'Prefer not to answer']} value={data.gender} onChange={v => updateData({ gender: v })} />
-        <RadioGroup label="5) Primary role" options={['Law enforcement', 'Fire service', 'EMS', 'Emergency communications/dispatch', 'Corrections', 'Military (active duty)', 'Veteran', 'Other']} value={data.role} onChange={v => updateData({ role: v })} />
-        <RadioGroup label="6) Current status" options={['Active', 'Retired', 'Former', 'Reserve/National Guard']} value={data.status} onChange={v => updateData({ status: v })} />
-        <RadioGroup label="7) Years of service" options={['<5', '5–10', '11–20', '21+']} value={data.years} onChange={v => updateData({ years: v })} />
-        <RadioGroup label="8) Leadership level" options={['Frontline/member', 'Supervisor', 'Manager/command staff', 'Executive leadership']} value={data.leadership} onChange={v => updateData({ leadership: v })} />
-        <RadioGroup label="9) Military service" options={['Never served', 'Active duty', 'Reserve/Guard', 'Veteran']} value={data.military} onChange={v => updateData({ military: v })} />
-        <RadioGroup label="10) Combat deployment (Optional)" options={['Yes', 'No', 'Prefer not to answer']} value={data.combat} onChange={v => updateData({ combat: v })} />
-        <RadioGroup label="11) Organization type" options={['Municipal', 'County', 'State', 'Federal', 'Private', 'Volunteer']} value={data.orgType} onChange={v => updateData({ orgType: v })} />
-        <RadioGroup label="12) Geographic setting" options={['Urban', 'Suburban', 'Rural']} value={data.setting} onChange={v => updateData({ setting: v })} />
+        <div id="demo-4">
+          <RadioGroup label="4) Gender identity (Optional)" options={['Male', 'Female', 'Other designation', 'Prefer not to answer']} value={data.gender} onChange={handleRadioChange('gender', 'demo-5')} />
+        </div>
+        <div id="demo-5">
+          <RadioGroup label="5) Primary role" options={['Law enforcement', 'Fire service', 'EMS', 'Emergency communications/dispatch', 'Corrections', 'Military (active duty)', 'Veteran', 'Other']} value={data.role} onChange={handleRadioChange('role', 'demo-6')} />
+        </div>
+        <div id="demo-6">
+          <RadioGroup label="6) Current status" options={['Active', 'Retired', 'Former', 'Reserve/National Guard']} value={data.status} onChange={handleRadioChange('status', 'demo-7')} />
+        </div>
+        <div id="demo-7">
+          <RadioGroup label="7) Years of service" options={['<5', '5–10', '11–20', '21+']} value={data.years} onChange={handleRadioChange('years', 'demo-8')} />
+        </div>
+        <div id="demo-8">
+          <RadioGroup label="8) Leadership level" options={['Frontline/member', 'Supervisor', 'Manager/command staff', 'Executive leadership']} value={data.leadership} onChange={handleRadioChange('leadership', 'demo-9')} />
+        </div>
+        <div id="demo-9">
+          <RadioGroup label="9) Military service" options={['Never served', 'Active duty', 'Reserve/Guard', 'Veteran']} value={data.military} onChange={handleRadioChange('military', 'demo-10')} />
+        </div>
+        <div id="demo-10">
+          <RadioGroup label="10) Combat deployment (Optional)" options={['Yes', 'No', 'Prefer not to answer']} value={data.combat} onChange={handleRadioChange('combat', 'demo-11')} />
+        </div>
+        <div id="demo-11">
+          <RadioGroup label="11) Organization type" options={['Municipal', 'County', 'State', 'Federal', 'Private', 'Volunteer']} value={data.orgType} onChange={handleRadioChange('orgType', 'demo-12')} />
+        </div>
+        <div id="demo-12">
+          <RadioGroup label="12) Geographic setting" options={['Urban', 'Suburban', 'Rural']} value={data.setting} onChange={(v: string) => updateData({ setting: v })} />
+        </div>
       </div>
 
-      <div className="pt-6 border-t border-slate-100 flex justify-end">
-        <Button onClick={nextStep} disabled={!isComplete}>
-          Continue <ChevronRight className="w-4 h-4 ml-2" />
+      <div className="pt-8 border-t border-slate-200 flex flex-col-reverse sm:flex-row justify-between gap-4">
+        <Button onClick={prevStep} variant="secondary" className="text-lg py-4 px-8 w-full sm:w-auto">
+          <ChevronLeft className="w-5 h-5 mr-2" /> Back
+        </Button>
+        <Button onClick={nextStep} disabled={!isComplete} className="text-lg py-4 px-8 w-full sm:w-auto">
+          Continue <ChevronRight className="w-5 h-5 ml-2" />
         </Button>
       </div>
     </div>
   );
 }
 
-function Measure({ title, description, questions, options, data, updateData, nextStep, isSubmit = false }: any) {
+function Measure({ title, description, questions, options, data, updateData, nextStep, prevStep, isSubmit = false }: any) {
   const isComplete = questions.every((_: any, i: number) => data[i] !== undefined);
 
+  const handleOptionSelect = (index: number, value: any) => {
+    updateData({ [index]: value });
+    setTimeout(() => {
+      const nextQ = document.getElementById(`measure-q-${index + 1}`);
+      if (nextQ) {
+        nextQ.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+  };
+
   return (
-    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-        <h2 className="text-2xl font-light text-slate-800">{title}</h2>
-        {description && <p className="text-slate-600 leading-relaxed text-sm">{description}</p>}
+    <div className="space-y-8 sm:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+        <h2 className="text-3xl sm:text-4xl font-bold text-slate-800">{title}</h2>
+        {description && <p className="text-slate-700 leading-relaxed text-lg sm:text-xl font-medium">{description}</p>}
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         {questions.map((q: string, i: number) => (
-          <div key={i} className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
-            <p className="text-sm font-medium text-slate-900 mb-4">{i + 1}. {q}</p>
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+          <div key={i} id={`measure-q-${i}`} className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
+            <p className="text-lg sm:text-xl font-bold text-slate-900 mb-6">{i + 1}. {q}</p>
+            <div className="flex flex-col sm:flex-row flex-wrap gap-4">
               {options.map((opt: any) => {
                 const isSelected = data[i] === opt.value;
                 return (
                   <button
                     key={opt.value}
-                    onClick={() => updateData({ [i]: opt.value })}
-                    className={`flex-1 min-w-[120px] p-3 rounded-lg border text-sm font-medium transition-all duration-200 ${
+                    onClick={() => handleOptionSelect(i, opt.value)}
+                    className={`flex-1 min-w-[120px] p-4 rounded-xl border-2 text-base sm:text-lg font-bold transition-all duration-200 ${
                       isSelected 
                         ? 'border-slate-900 bg-slate-900 text-white shadow-md' 
-                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-slate-100'
+                        : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400 hover:bg-slate-100'
                     }`}
                   >
                     {opt.label}
@@ -303,8 +386,11 @@ function Measure({ title, description, questions, options, data, updateData, nex
         ))}
       </div>
 
-      <div className="pt-4 flex justify-end sticky bottom-4 z-10">
-        <Button onClick={nextStep} disabled={!isComplete} className="shadow-lg w-full sm:w-auto text-lg py-4 px-8">
+      <div className="pt-8 border-t border-slate-200 flex flex-col-reverse sm:flex-row justify-between gap-4">
+        <Button onClick={prevStep} variant="secondary" className="w-full sm:w-auto text-lg py-4 px-8">
+          <ChevronLeft className="w-5 h-5 mr-2" /> Back
+        </Button>
+        <Button onClick={nextStep} disabled={!isComplete} className="w-full sm:w-auto text-lg py-4 px-8">
           {isSubmit ? 'Submit Assessment' : 'Continue'} <ChevronRight className="w-5 h-5 ml-2" />
         </Button>
       </div>
@@ -359,10 +445,10 @@ function FinalScreen({ email }: { email: string }) {
 // Helpers
 function Field({ label, hint, children }: any) {
   return (
-    <div className="space-y-2">
-      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+    <div className="space-y-3">
+      <label className="block text-sm sm:text-base font-bold text-slate-700 uppercase tracking-wider mb-2">
         {label}
-        {hint && <span className="block text-[10px] text-slate-400 font-normal mt-1 normal-case tracking-normal">{hint}</span>}
+        {hint && <span className="block text-xs sm:text-sm text-slate-500 font-medium mt-2 normal-case tracking-normal">{hint}</span>}
       </label>
       {children}
     </div>
@@ -371,17 +457,17 @@ function Field({ label, hint, children }: any) {
 
 function RadioGroup({ label, options, value, onChange }: any) {
   return (
-    <div className="space-y-3">
-      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{label}</label>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+    <div className="space-y-4">
+      <label className="block text-sm sm:text-base font-bold text-slate-700 uppercase tracking-wider mb-2">{label}</label>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {options.map((opt: string) => (
-          <label key={opt} className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
+          <label key={opt} className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${
             value === opt 
               ? 'border-slate-900 bg-slate-900 text-white shadow-md' 
-              : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'
+              : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400'
           }`}>
             <input type="radio" className="sr-only" checked={value === opt} onChange={() => onChange(opt)} />
-            <span className="text-xs font-medium">{opt}</span>
+            <span className="text-base font-bold">{opt}</span>
           </label>
         ))}
       </div>
@@ -389,16 +475,25 @@ function RadioGroup({ label, options, value, onChange }: any) {
   );
 }
 
-function Button({ children, onClick, disabled, className = '' }: any) {
+function Button({ children, onClick, disabled, className = '', variant = 'primary' }: any) {
+  const baseStyle = "inline-flex items-center justify-center rounded-full text-sm font-bold transition-all";
+  
+  let variantStyle = "";
+  if (variant === 'primary') {
+    variantStyle = disabled 
+      ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-xl';
+  } else if (variant === 'secondary') {
+    variantStyle = disabled
+      ? 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none'
+      : 'bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-lg';
+  }
+
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex items-center justify-center px-8 py-3 rounded-full text-sm font-bold shadow-xl transition-colors ${
-        disabled
-          ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-          : 'bg-slate-900 text-white hover:bg-slate-800'
-      } ${className}`}
+      className={`${baseStyle} ${variantStyle} ${className}`}
     >
       {children}
     </button>
