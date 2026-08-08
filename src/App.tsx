@@ -57,7 +57,7 @@ export default function App() {
         callSign: 'TestUser123', email: 'test@example.com', age: '45', gender: 'Male', role: 'Fire service', status: 'Active',
         years: '11–20', leadership: 'Supervisor', military: 'Veteran', combat: 'Yes', orgType: 'Municipal', setting: 'Urban'
       },
-      springer: { '0': 4, '1': 4, '2': 4, '3': 4, '4': 4 },
+      springer: { '0': 1, '1': 1, '2': 1, '3': 1, '4': 1, '5': 1, '6': 1, '7': 1, '8': 1, '9': 1, '10': 1, '11': 1 },
       cape: { '0': 1, '1': 0, '2': 1, '3': 0, '4': 1, '5': 0, '6': 1, '7': 0, '8': 1, '9': 0 },
       pcl5: { '0': 2, '1': 2, '2': 2, '3': 2, '4': 2, '5': 2, '6': 2, '7': 2, '8': 2, '9': 2, '10': 2, '11': 2, '12': 2, '13': 2, '14': 2, '15': 2, '16': 2, '17': 2, '18': 2, '19': 2 },
       gad7: { '0': 1, '1': 1, '2': 1, '3': 1, '4': 1, '5': 1, '6': 1 },
@@ -81,6 +81,7 @@ export default function App() {
     // Process results for Google Apps Script
     const capeScore = Object.values(data.cape).reduce((sum: number, val: any) => sum + Number(val), 0) as number;
     const pcl5Score = Object.values(data.pcl5).reduce((sum: number, val: any) => sum + Number(val), 0) as number;
+    const springerScore = Object.values(data.springer).reduce((sum: number, val: any) => sum + Number(val), 0) as number;
     
     let capeInterp = "No reported career-related adverse events";
     if (capeScore >= 1 && capeScore <= 3) capeInterp = "Low to moderate exposure";
@@ -92,9 +93,16 @@ export default function App() {
     if (pcl5Score >= 32 && pcl5Score <= 49) pcl5Interp = "Moderate symptoms";
     if (pcl5Score >= 50) pcl5Interp = "Severe symptoms";
 
+    let springerInterp = "Well regulated";
+    if (springerScore >= 25 && springerScore <= 36) springerInterp = "Mildly dysregulated";
+    if (springerScore >= 37 && springerScore <= 48) springerInterp = "Moderately dysregulated";
+    if (springerScore >= 49) springerInterp = "Severely dysregulated";
+
     const finalPayload = {
       ...data,
       scores: {
+        springer: springerScore,
+        springerInterpretation: springerInterp,
         cape: capeScore,
         capeInterpretation: capeInterp,
         pcl5: pcl5Score,
@@ -103,6 +111,7 @@ export default function App() {
     };
 
     console.log(JSON.stringify(finalPayload, null, 2));
+    window.alert(JSON.stringify({ scores: finalPayload.scores }, null, 2));
 
     // @ts-ignore
     if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -126,13 +135,25 @@ export default function App() {
             title="The Springer Measure of Elasticity"
             description="This first measure looks at your current flexibility and range of motion in your nervous system, identity and relationships. Thousands of first responders have completed this measure so if we ever talk through your score, I can share how your scores compare to others."
             questions={SPRINGER_QUESTIONS}
-            options={[
-              { label: 'Strongly Disagree', value: 1 },
-              { label: 'Disagree', value: 2 },
-              { label: 'Neutral', value: 3 },
-              { label: 'Agree', value: 4 },
-              { label: 'Strongly Agree', value: 5 }
-            ]}
+            options={(i: number) => {
+              if (i % 2 === 0) { // Items 1, 3, 5, 7, 9, 11 (index 0, 2, 4...)
+                return [
+                  { label: 'Almost always', value: 1 },
+                  { label: 'Often', value: 2 },
+                  { label: 'Sometimes', value: 3 },
+                  { label: 'Occasionally', value: 4 },
+                  { label: 'Almost never', value: 5 }
+                ];
+              } else { // Items 2, 4, 6, 8, 10, 12 (index 1, 3, 5...)
+                return [
+                  { label: 'Almost always', value: 5 },
+                  { label: 'Often', value: 4 },
+                  { label: 'Sometimes', value: 3 },
+                  { label: 'Occasionally', value: 2 },
+                  { label: 'Almost never', value: 1 }
+                ];
+              }
+            }}
             data={data.springer}
             updateData={(v) => updateData('springer', v)}
             nextStep={nextStep}
@@ -365,7 +386,7 @@ function Measure({ title, description, questions, options, data, updateData, nex
           <div key={i} id={`measure-q-${i}`} className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
             <p className="text-lg sm:text-xl font-bold text-slate-900 mb-6">{i + 1}. {q}</p>
             <div className="flex flex-col sm:flex-row flex-wrap gap-4">
-              {options.map((opt: any) => {
+              {((typeof options === 'function' ? options(i) : options) as any[]).map((opt: any) => {
                 const isSelected = data[i] === opt.value;
                 return (
                   <button
@@ -377,7 +398,7 @@ function Measure({ title, description, questions, options, data, updateData, nex
                         : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400 hover:bg-slate-100'
                     }`}
                   >
-                    {opt.label}
+                    <span className="flex-1 min-w-0 break-words">{opt.label}</span>
                   </button>
                 );
               })}
@@ -467,7 +488,7 @@ function RadioGroup({ label, options, value, onChange }: any) {
               : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400'
           }`}>
             <input type="radio" className="sr-only" checked={value === opt} onChange={() => onChange(opt)} />
-            <span className="text-base font-bold">{opt}</span>
+            <span className="text-base font-bold flex-1 min-w-0 break-words">{opt}</span>
           </label>
         ))}
       </div>

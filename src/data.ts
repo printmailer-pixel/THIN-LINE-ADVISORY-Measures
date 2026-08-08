@@ -65,11 +65,17 @@ export const CSSRS_QUESTIONS = [
   "Have you ever done anything, started to do anything, or prepared to do anything to end your life?"
 ];
 
-// Placeholder for Springer Measure
 export const SPRINGER_QUESTIONS = [
-  "I am able to adapt to unexpected changes in my work environment without feeling overwhelmed.",
-  "I feel confident in my ability to manage the physical and emotional demands of my profession.",
-  "I maintain a strong sense of purpose and identity outside of my role as a first responder.",
-  "I have supportive relationships that I can rely on when dealing with work-related stress.",
-  "I can recover quickly after experiencing a highly stressful or traumatic event on the job."
+  "I can take deep, slow breaths with ease.",
+  "I've noticed that I get irritated more easily than I used to.",
+  "After my adrenaline spikes, it doesn't take long for me to get myself calm again.",
+  "I carry a heavy weight of stress that makes my body feel dragged down.",
+  "I sleep well and wake up feeling rested.",
+  "I frequently have tension headaches or muscle tightness due to work pressures.",
+  "I can fully focus on and enjoy time with loved ones when I'm off from work.",
+  "My body often feels tense, tight, or on edge.",
+  "I can handle crises without becoming overly stressed.",
+  "I feel disconnected from others or I would rather avoid social interactions.",
+  "I can maintain clear, composed communication, even during heated conflict.",
+  "When my phone rings, my first thought is often \"did something go wrong?\""
 ];
