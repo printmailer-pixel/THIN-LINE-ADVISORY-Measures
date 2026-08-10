@@ -33,6 +33,7 @@ const INITIAL_STATE: AppState = {
 export default function App() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<AppState>(INITIAL_STATE);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const updateData = (section: keyof AppState, values: Partial<any>) => {
     setData(prev => ({
@@ -42,13 +43,13 @@ export default function App() {
   };
 
   const nextStep = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
     setStep(s => s + 1);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
   };
 
   const prevStep = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
     setStep(s => Math.max(0, s - 1));
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
   };
 
   const preloadMockData = () => {
@@ -77,8 +78,21 @@ export default function App() {
     }
   }, [step, data.phq9]);
 
-  const handleSubmit = () => {
-    // Process results for Google Apps Script
+  const handleSubmit = async () => {
+    const sanitizeKey = (str: string) => {
+      return str.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+    };
+
+    const transformAnswers = (answers: any, questions: string[]) => {
+      const transformed: Record<string, any> = {};
+      for (let i = 0; i < questions.length; i++) {
+        if (answers[i] !== undefined) {
+          transformed[sanitizeKey(questions[i])] = answers[i];
+        }
+      }
+      return transformed;
+    };
+
     const capeScore = Object.values(data.cape).reduce((sum: number, val: any) => sum + Number(val), 0) as number;
     const pcl5Score = Object.values(data.pcl5).reduce((sum: number, val: any) => sum + Number(val), 0) as number;
     const springerScore = Object.values(data.springer).reduce((sum: number, val: any) => sum + Number(val), 0) as number;
@@ -99,7 +113,13 @@ export default function App() {
     if (springerScore >= 49) springerInterp = "Severely dysregulated";
 
     const finalPayload = {
-      ...data,
+      demographics: data.demographics,
+      springer: transformAnswers(data.springer, SPRINGER_QUESTIONS),
+      cape: transformAnswers(data.cape, CAPE_QUESTIONS),
+      pcl5: transformAnswers(data.pcl5, PCL5_QUESTIONS),
+      gad7: transformAnswers(data.gad7, GAD7_QUESTIONS),
+      phq9: transformAnswers(data.phq9, PHQ9_QUESTIONS),
+      cssrs: transformAnswers(data.cssrs, CSSRS_QUESTIONS),
       scores: {
         springer: springerScore,
         springerInterpretation: springerInterp,
@@ -111,18 +131,40 @@ export default function App() {
     };
 
     console.log(JSON.stringify(finalPayload, null, 2));
-    window.alert(JSON.stringify({ scores: finalPayload.scores }, null, 2));
 
-    // @ts-ignore
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-      // @ts-ignore
-      google.script.run
-        .withSuccessHandler(() => console.log('Successfully saved to Google Apps Script'))
-        .withFailureHandler((err: any) => console.error('Failed to save', err))
-        .submitSurveyData(finalPayload);
+    const webhookUrl = (window as any).WEBHOOK_URL;
+    if (webhookUrl) {
+      setIsSubmitting(true);
+      try {
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: JSON.stringify(finalPayload)
+        });
+        
+        // When using no-cors, the response is opaque (status 0)
+        if (response.ok || response.type === 'opaque' || response.status === 0) {
+          // We can't read the JSON response in no-cors mode, so we assume success
+          setStep(8);
+          setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+        } else {
+          console.error('Server error:', response.status);
+          alert('Server error: ' + response.status);
+        }
+      } catch (err) {
+        console.error('Network error:', err);
+        alert('Network error. Please try again.');
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      console.log('No webhook URL configured. Simulating success.');
+      setStep(8);
+      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
     }
-    
-    setStep(8);
   };
 
   return (
@@ -226,6 +268,7 @@ export default function App() {
             nextStep={step === 6 && data.phq9['8'] && Number(data.phq9['8']) > 0 ? nextStep : handleSubmit}
             prevStep={prevStep}
             isSubmit={!(step === 6 && data.phq9['8'] && Number(data.phq9['8']) > 0)}
+            isSubmitting={isSubmitting}
           />
         )}
         {step === 7 && (
@@ -242,6 +285,7 @@ export default function App() {
             nextStep={handleSubmit}
             prevStep={prevStep}
             isSubmit={true}
+            isSubmitting={isSubmitting}
           />
         )}
         {step === 8 && <FinalScreen email={data.demographics.email} />}
@@ -361,7 +405,7 @@ function Demographics({ data, updateData, nextStep, prevStep }: any) {
   );
 }
 
-function Measure({ title, description, questions, options, data, updateData, nextStep, prevStep, isSubmit = false }: any) {
+function Measure({ title, description, questions, options, data, updateData, nextStep, prevStep, isSubmit = false, isSubmitting = false }: any) {
   const isComplete = questions.every((_: any, i: number) => data[i] !== undefined);
 
   const handleOptionSelect = (index: number, value: any) => {
@@ -385,20 +429,20 @@ function Measure({ title, description, questions, options, data, updateData, nex
         {questions.map((q: string, i: number) => (
           <div key={i} id={`measure-q-${i}`} className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
             <p className="text-lg sm:text-xl font-bold text-slate-900 mb-6">{i + 1}. {q}</p>
-            <div className="flex flex-col sm:flex-row flex-wrap gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {((typeof options === 'function' ? options(i) : options) as any[]).map((opt: any) => {
                 const isSelected = data[i] === opt.value;
                 return (
                   <button
                     key={opt.value}
                     onClick={() => handleOptionSelect(i, opt.value)}
-                    className={`flex-1 min-w-[120px] p-4 rounded-xl border-2 text-base sm:text-lg font-bold transition-all duration-200 ${
+                    className={`p-4 rounded-xl border-2 text-base sm:text-lg font-bold transition-all duration-200 ${
                       isSelected 
                         ? 'border-slate-900 bg-slate-900 text-white shadow-md' 
                         : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400 hover:bg-slate-100'
                     }`}
                   >
-                    <span className="flex-1 min-w-0 break-words">{opt.label}</span>
+                    <span>{opt.label}</span>
                   </button>
                 );
               })}
@@ -408,11 +452,11 @@ function Measure({ title, description, questions, options, data, updateData, nex
       </div>
 
       <div className="pt-8 border-t border-slate-200 flex flex-col-reverse sm:flex-row justify-between gap-4">
-        <Button onClick={prevStep} variant="secondary" className="w-full sm:w-auto text-lg py-4 px-8">
+        <Button onClick={prevStep} variant="secondary" className="w-full sm:w-auto text-lg py-4 px-8" disabled={isSubmitting}>
           <ChevronLeft className="w-5 h-5 mr-2" /> Back
         </Button>
-        <Button onClick={nextStep} disabled={!isComplete} className="w-full sm:w-auto text-lg py-4 px-8">
-          {isSubmit ? 'Submit Assessment' : 'Continue'} <ChevronRight className="w-5 h-5 ml-2" />
+        <Button onClick={nextStep} disabled={!isComplete || isSubmitting} className="w-full sm:w-auto text-lg py-4 px-8">
+          {isSubmit ? (isSubmitting ? 'Please wait...' : 'Submit Assessment') : 'Continue'} {!isSubmit || !isSubmitting ? <ChevronRight className="w-5 h-5 ml-2" /> : null}
         </Button>
       </div>
     </div>
@@ -480,7 +524,7 @@ function RadioGroup({ label, options, value, onChange }: any) {
   return (
     <div className="space-y-4">
       <label className="block text-sm sm:text-base font-bold text-slate-700 uppercase tracking-wider mb-2">{label}</label>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {options.map((opt: string) => (
           <label key={opt} className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${
             value === opt 
@@ -488,7 +532,7 @@ function RadioGroup({ label, options, value, onChange }: any) {
               : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400'
           }`}>
             <input type="radio" className="sr-only" checked={value === opt} onChange={() => onChange(opt)} />
-            <span className="text-base font-bold flex-1 min-w-0 break-words">{opt}</span>
+            <span className="text-base font-bold">{opt}</span>
           </label>
         ))}
       </div>
