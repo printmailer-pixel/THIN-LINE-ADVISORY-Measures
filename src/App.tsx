@@ -96,6 +96,9 @@ export default function App() {
     const capeScore = Object.values(data.cape).reduce((sum: number, val: any) => sum + Number(val), 0) as number;
     const pcl5Score = Object.values(data.pcl5).reduce((sum: number, val: any) => sum + Number(val), 0) as number;
     const springerScore = Object.values(data.springer).reduce((sum: number, val: any) => sum + Number(val), 0) as number;
+    const gad7Score = Object.values(data.gad7).reduce((sum: number, val: any) => sum + Number(val), 0) as number;
+    const phq9Score = Object.values(data.phq9).reduce((sum: number, val: any) => sum + Number(val), 0) as number;
+    const cssrsScore = Object.values(data.cssrs).reduce((sum: number, val: any) => sum + Number(val), 0) as number;
     
     let capeInterp = "No reported career-related adverse events";
     if (capeScore >= 1 && capeScore <= 3) capeInterp = "Low to moderate exposure";
@@ -111,6 +114,19 @@ export default function App() {
     if (springerScore >= 25 && springerScore <= 36) springerInterp = "Mildly dysregulated";
     if (springerScore >= 37 && springerScore <= 48) springerInterp = "Moderately dysregulated";
     if (springerScore >= 49) springerInterp = "Severely dysregulated";
+    
+    let gad7Interp = "Minimal anxiety";
+    if (gad7Score >= 5 && gad7Score <= 9) gad7Interp = "Mild anxiety";
+    if (gad7Score >= 10 && gad7Score <= 14) gad7Interp = "Moderate anxiety";
+    if (gad7Score >= 15) gad7Interp = "Severe anxiety";
+    
+    let phq9Interp = "Minimal depression";
+    if (phq9Score >= 5 && phq9Score <= 9) phq9Interp = "Mild depression";
+    if (phq9Score >= 10 && phq9Score <= 14) phq9Interp = "Moderate depression";
+    if (phq9Score >= 15 && phq9Score <= 19) phq9Interp = "Moderately severe depression";
+    if (phq9Score >= 20) phq9Interp = "Severe depression";
+    
+    let cssrsInterp = cssrsScore > 0 ? "Positive (Action recommended)" : "Negative";
 
     const finalPayload = {
       demographics: data.demographics,
@@ -127,6 +143,12 @@ export default function App() {
         capeInterpretation: capeInterp,
         pcl5: pcl5Score,
         pcl5Interpretation: pcl5Interp,
+        gad7: gad7Score,
+        gad7Interpretation: gad7Interp,
+        phq9: phq9Score,
+        phq9Interpretation: phq9Interp,
+        cssrs: cssrsScore,
+        cssrsInterpretation: cssrsInterp
       }
     };
 
